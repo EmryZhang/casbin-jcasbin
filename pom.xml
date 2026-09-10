@@ -91,7 +91,7 @@ under the License.
                         <phase>prepare-package</phase>
                         <goals><goal>copy-resources</goal></goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/apidocs/META-INF</outputDirectory>
+                            <outputDirectory>${project.build.directory}/reports/apidocs/META-INF</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${project.basedir}</directory>
