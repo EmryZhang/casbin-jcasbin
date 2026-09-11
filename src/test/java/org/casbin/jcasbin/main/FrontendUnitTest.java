@@ -32,10 +32,10 @@ public class FrontendUnitTest {
   public void testCasbinJsGetPermissionForUser() throws IOException {
     SyncedEnforcer e = new SyncedEnforcer("examples/rbac_model.conf", "examples/rbac_with_hierarchy_policy.csv");
     HashMap<String, Object> received = new Gson().fromJson(Frontend.casbinJsGetPermissionForUser(e, "alice"), HashMap.class);
-    String expectedModelStr = new String(Files.readAllBytes(Paths.get("examples/rbac_model.conf")));
+    String expectedModelStr = readFixtureWithoutComments("examples/rbac_model.conf");
     assertEquals(received.get("m"), expectedModelStr);
 
-    String expectedPolicyStr = new String(Files.readAllBytes(Paths.get("examples/rbac_with_hierarchy_policy.csv")));
+    String expectedPolicyStr = readFixtureWithoutComments("examples/rbac_with_hierarchy_policy.csv");
     expectedPolicyStr = Pattern.compile("\n+").matcher(expectedPolicyStr).replaceAll("\n");
     String[] expectedPolicyItem = expectedPolicyStr.split(",|\n");
     int i = 0;
@@ -51,5 +51,11 @@ public class FrontendUnitTest {
         i++;
       }
     }
+  }
+
+  // Model and policy export contains definitions, not file license comments.
+  private String readFixtureWithoutComments(String path) throws IOException {
+    String text = new String(Files.readAllBytes(Paths.get(path)), java.nio.charset.StandardCharsets.UTF_8);
+    return text.replaceAll("(?m)^#.*(?:\\r?\\n|$)", "").replaceFirst("^\\s*\\r?\\n", "");
   }
 }
