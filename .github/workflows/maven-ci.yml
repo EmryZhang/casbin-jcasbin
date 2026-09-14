@@ -41,7 +41,10 @@ jobs:
           java-version: 1.8
 
       - name: Build with Maven
-        run: mvn clean test cobertura:cobertura
+        run: mvn -B -ntp clean verify cobertura:cobertura -Dgpg.skip=true
+
+      - name: Test release verification
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
 
       - name: Codecov
         uses: codecov/codecov-action@v1

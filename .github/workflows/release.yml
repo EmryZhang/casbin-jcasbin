@@ -23,6 +23,8 @@ name: Release
 #
 # The release manager downloads the source package from the release, signs it
 # locally, and uses it for voting. This workflow does not sign anything.
+# Push the final tag only after the voted originals have been promoted to
+# downloads.apache.org/incubator/casbin/jcasbin-X.Y.Z-incubating/.
 
 on:
   push:
@@ -31,6 +33,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   prepare:
@@ -179,6 +185,7 @@ jobs:
           } > RELEASE_NOTES.md
 
       - name: Create source packages
+        if: needs.prepare.outputs.prerelease == 'true'
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
           BASENAME: ${{ needs.prepare.outputs.basename }}
@@ -190,19 +197,26 @@ jobs:
           sha512sum "${BASENAME}.tar.gz" > "${BASENAME}.tar.gz.sha512"
           sha512sum "${BASENAME}.zip" > "${BASENAME}.zip.sha512"
 
+      - name: Verify and reuse promoted ASF source packages
+        if: needs.prepare.outputs.prerelease == 'false'
+        env:
+          VERSION: ${{ needs.prepare.outputs.maven_version }}
+        run: python3 .github/scripts/verify_release.py "${VERSION}"
+
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.prepare.outputs.tag }}
-          name: JCasbin ${{ needs.prepare.outputs.tag }}
-          body_path: RELEASE_NOTES.md
-          draft: false
-          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
-          files: |
-            dist/${{ needs.prepare.outputs.basename }}.tar.gz
-            dist/${{ needs.prepare.outputs.basename }}.tar.gz.sha512
-            dist/${{ needs.prepare.outputs.basename }}.zip
-            dist/${{ needs.prepare.outputs.basename }}.zip.sha512
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          FLAGS=()
+          if [ "${PRERELEASE}" = "true" ]; then
+            FLAGS+=(--prerelease --latest=false)
+          fi
+          # Creation fails if this release exists; never replace its assets.
+          gh release create "${TAG}" dist/* --verify-tag \
+            --title "JCasbin ${TAG}" --notes-file RELEASE_NOTES.md "${FLAGS[@]}"
 
   publish-maven:
     name: Publish Maven
