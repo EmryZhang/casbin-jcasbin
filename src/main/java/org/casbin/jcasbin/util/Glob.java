@@ -1,183 +1,152 @@
-// Copyright 2021 The casbin Authors. All Rights Reserved.
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements. See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership. The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License. You may obtain a copy of the License at
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+//     https://www.apache.org/licenses/LICENSE-2.0
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
 
 package org.casbin.jcasbin.util;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/**
- *
- *
- * @author shy
- * @since 2021/1/13
- */
+/** Converts Casbin path globs into regular expressions, using '/' on every OS. */
 public class Glob {
 
-    private static final String REGEX_META_CHARS = ".^$+{[]|()";
-    private static final String GLOB_META_CHARS = "\\*?[{";
-
     /**
-     * Creates a regex pattern from the given glob expression.
+     * Translates literals, escapes, *, **, ?, character sets and brace alternatives.
+     * A single wildcard cannot cross '/', while ** can. Alternatives cannot nest.
      *
-     * @param globPattern the given glob expression
-     * @return the regex pattern
+     * @param globPattern the path pattern
+     * @return a regular expression matching the complete input
+     * @throws PatternSyntaxException when the glob is malformed
      */
     public static String toRegexPattern(String globPattern) {
-        boolean inGroup = false;
-        StringBuilder regex = new StringBuilder("^");
+        return "\\A" + new Translator(globPattern).sequence(false) + "\\z";
+    }
 
-        int i = 0;
-        while (i < globPattern.length()) {
-            char c = globPattern.charAt(i++);
-            switch (c) {
-                case '\\':
-                    // escape special characters
-                    if (i == globPattern.length()) {
-                        throw new PatternSyntaxException("No character to escape",
-                            globPattern, i - 1);
-                    }
-                    char next = globPattern.charAt(i++);
-                    if (isGlobMeta(next) || isRegexMeta(next)) {
-                        regex.append('\\');
-                    }
-                    regex.append(next);
-                    break;
-                case '/':
-                    regex.append(c);
-                    break;
-                case '[':
-                    // don't match name separator in class
-                    regex.append("[[^/]&&[");
-                    if (next(globPattern, i) == '^') {
-                        // escape the regex negation char if it appears
-                        regex.append("\\^");
-                        i++;
-                    } else {
-                        // negation
-                        if (next(globPattern, i) == '!') {
-                            regex.append('^');
-                            i++;
-                        }
-                        // hyphen allowed at start
-                        if (next(globPattern, i) == '-') {
-                            regex.append('-');
-                            i++;
-                        }
-                    }
-                    boolean hasRangeStart = false;
-                    char last = 0;
-                    while (i < globPattern.length()) {
-                        c = globPattern.charAt(i++);
-                        if (c == ']') {
-                            break;
-                        }
-                        if (c == '/') {
-                            throw new PatternSyntaxException("Explicit 'name separator' in class",
-                                globPattern, i - 1);
-                        }
-                        // TBD: how to specify ']' in a class?
-                        if (c == '\\' || c == '[' || c == '&' && next(globPattern, i) == '&') {
-                            // escape '\', '[' or "&&" for regex class
-                            regex.append('\\');
-                        }
-                        regex.append(c);
+    private static final class Translator {
+        private final String input;
+        private int cursor;
 
-                        if (c == '-') {
-                            if (!hasRangeStart) {
-                                throw new PatternSyntaxException("Invalid range",
-                                    globPattern, i - 1);
-                            }
-                            if ((c = next(globPattern, i++)) == 0 || c == ']') {
-                                break;
-                            }
-                            if (c < last) {
-                                throw new PatternSyntaxException("Invalid range",
-                                    globPattern, i - 3);
-                            }
-                            regex.append(c);
-                            hasRangeStart = false;
-                        } else {
-                            hasRangeStart = true;
-                            last = c;
-                        }
-                    }
-                    if (c != ']') {
-                        throw new PatternSyntaxException("Missing ']", globPattern, i - 1);
-                    }
-                    regex.append("]]");
-                    break;
-                case '{':
-                    if (inGroup) {
-                        throw new PatternSyntaxException("Cannot nest groups",
-                            globPattern, i - 1);
-                    }
-                    regex.append("(?:(?:");
-                    inGroup = true;
-                    break;
-                case '}':
-                    if (inGroup) {
-                        regex.append("))");
-                        inGroup = false;
-                    } else {
-                        regex.append('}');
-                    }
-                    break;
-                case ',':
-                    if (inGroup) {
-                        regex.append(")|(?:");
-                    } else {
-                        regex.append(',');
-                    }
-                    break;
-                case '*':
-                    if (next(globPattern, i) == '*') {
-                        // crosses directory boundaries
-                        regex.append(".*");
-                        i++;
-                    } else {
-                        // within directory boundary
-                        regex.append("[^/]*");
-                    }
-                    break;
-                case '?':
-                    regex.append("[^/]");
-                    break;
+        private Translator(String input) {
+            this.input = input;
+        }
 
-                default:
-                    if (isRegexMeta(c)) {
-                        regex.append('\\');
+        private PatternSyntaxException error(String message, int position) {
+            return new PatternSyntaxException(message, input, position);
+        }
+
+        private String sequence(boolean alternative) {
+            List<String> pieces = new ArrayList<>();
+            while (cursor < input.length()) {
+                char token = input.charAt(cursor);
+                if (alternative && (token == ',' || token == '}')) {
+                    break;
+                }
+                int position = cursor++;
+                if (token == '\\') {
+                    if (cursor == input.length()) {
+                        throw error("Escape requires a following character", position);
                     }
-                    regex.append(c);
+                    int escaped = cursor;
+                    cursor += Character.charCount(input.codePointAt(cursor));
+                    pieces.add(Pattern.quote(input.substring(escaped, cursor)));
+                } else if (token == '*') {
+                    boolean recursive = cursor < input.length() && input.charAt(cursor) == '*';
+                    if (recursive) {
+                        cursor++;
+                    }
+                    pieces.add(recursive ? ".*" : "[^/]*");
+                } else if (token == '?') {
+                    pieces.add("[^/]");
+                } else if (token == '[') {
+                    pieces.add(characterSet(position));
+                } else if (token == '{') {
+                    if (alternative) {
+                        throw error("Nested alternatives are not supported", position);
+                    }
+                    pieces.add(alternatives(position));
+                } else {
+                    if (Character.isHighSurrogate(token) && cursor < input.length()
+                            && Character.isLowSurrogate(input.charAt(cursor))) {
+                        cursor++;
+                    }
+                    pieces.add(Pattern.quote(input.substring(position, cursor)));
+                }
+            }
+            return String.join("", pieces);
+        }
+
+        private String alternatives(int start) {
+            List<String> branches = new ArrayList<>();
+            while (true) {
+                branches.add(sequence(true));
+                if (cursor == input.length()) {
+                    throw error("Alternative list is not closed", start);
+                }
+                if (input.charAt(cursor++) == '}') {
+                    return "(?:" + String.join("|", branches) + ")";
+                }
             }
         }
 
-        if (inGroup) {
-            throw new PatternSyntaxException("Missing '}", globPattern, i - 1);
+        private String characterSet(int start) {
+            int close = input.indexOf(']', cursor);
+            if (close < 0) {
+                throw error("Character set is not closed", start);
+            }
+            String members = input.substring(cursor, close);
+            int offset = cursor;
+            cursor = close + 1;
+            boolean exclude = members.startsWith("!");
+            int index = exclude ? 1 : 0;
+            StringBuilder contents = new StringBuilder();
+            // An initial caret is a literal, not a negation marker.
+            if (index == 0 && members.startsWith("^")) {
+                contents.append(Pattern.quote("^"));
+                index++;
+            } else if (index < members.length() && members.charAt(index) == '-') {
+                contents.append(Pattern.quote("-"));
+                index++;
+            }
+            while (index < members.length()) {
+                int lower = members.codePointAt(index);
+                index += Character.charCount(lower);
+                if (lower == '/' || lower == '-') {
+                    throw error("Invalid character-set member", offset + index - 1);
+                }
+                contents.append(Pattern.quote(new String(Character.toChars(lower))));
+                if (index < members.length() && members.charAt(index) == '-') {
+                    index++;
+                    if (index == members.length()) {
+                        contents.append(Pattern.quote("-"));
+                    } else {
+                        int upper = members.codePointAt(index);
+                        index += Character.charCount(upper);
+                        if (upper < lower) {
+                            throw error("Invalid character-set range", offset + index - 1);
+                        }
+                        contents.append('-').append(Pattern.quote(new String(Character.toChars(upper))));
+                    }
+                }
+            }
+            if (contents.length() == 0) {
+                throw error("Character set must not be empty", start);
+            }
+            return exclude ? "[^/" + contents + "]" : "(?!/)[" + contents + "]";
         }
-
-        return regex.append('$').toString();
-    }
-
-    private static boolean isRegexMeta(char c) {
-        return REGEX_META_CHARS.indexOf(c) != -1;
-    }
-
-    private static boolean isGlobMeta(char c) {
-        return GLOB_META_CHARS.indexOf(c) != -1;
-    }
-
-    private static char next(String glob, int i) {
-        return i < glob.length() ? glob.charAt(i) : 0;
     }
 }

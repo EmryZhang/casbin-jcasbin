@@ -183,6 +183,12 @@ jobs:
               echo "- No feat/fix/doc commits were found in this release range."
             fi
           } > RELEASE_NOTES.md
+          if [ "${PRERELEASE}" != "true" ]; then
+            printf '\nOfficial source: https://downloads.apache.org/incubator/casbin/jcasbin-%s-incubating/\n' "${CURRENT_VERSION}" >> RELEASE_NOTES.md
+            printf '\nVerify downloads: https://www.apache.org/info/verification.html\n' >> RELEASE_NOTES.md
+          fi
+          printf '\n' >> RELEASE_NOTES.md
+          cat DISCLAIMER >> RELEASE_NOTES.md
 
       - name: Create source packages
         if: needs.prepare.outputs.prerelease == 'true'

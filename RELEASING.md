@@ -88,3 +88,12 @@ These operations require no additional source PR after the preparation merges.
 
 References: [ASF release policy](https://www.apache.org/legal/release-policy.html)
 and [Central Maven publishing](https://central.sonatype.org/publish/publish-portal-maven/).
+
+## Compatibility and source review
+
+This preparation proposes keeping `org.casbin:jcasbin` for existing users.
+Review the Incubator Maven namespace guidance and record the project disposition
+and any applicable exception before release. This is not evidence of IPMC
+approval or registry ownership. Review copyright-notice relocation with the
+rights holders or their authorized agents; a successful RAT check is not
+permission to change attribution. Keep those decisions with the PR/release record.

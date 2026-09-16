@@ -19,8 +19,12 @@ under the License.
 
 # Building JCasbin from a source archive
 
-Use a JDK 8 installation and Maven 3.9.x. Set `JAVA_HOME` to the JDK and
-place Maven on `PATH`. Dependencies are downloaded from Maven repositories.
+Use JDK 8 to compile and test, Maven 3.9.x, and JDK 25 for the standard
+Javadoc doclet. Set `JAVA_HOME` to JDK 8 and put Maven on `PATH`. Register
+JDK 25 in Maven toolchains with version `25`, or add
+`-DjavadocExecutable=/path/to/jdk-25/bin/javadoc` to the commands below.
+Dependencies are downloaded from Maven repositories. GitHub CI installs both
+JDKs; the last setup-java version (8) runs Maven.
 
 From the extracted archive's top-level directory, run:
 
@@ -47,3 +51,12 @@ Release preparation commits the intended Maven version to `pom.xml`. An RC tag
 The source archive name omits the RC number so promotion preserves the voted
 bytes. The archive, checksum and signature actually approved by the community
 must be promoted unchanged; a successful local build is not release approval.
+
+## Documentation licenses
+
+The Javadoc JAR contains complete Apache-2.0, UPL-1.0 and jQuery/jQuery UI
+MIT license texts in `META-INF/LICENSE` and `legal/LICENSE`. Its generated
+resource headers are retained; fonts and syntax highlighting are not included.
+Run `python3 .github/scripts/verify_javadoc.py target/jcasbin-*-javadoc.jar`
+after building. Review resource versions and the license template together
+when changing the JDK. The main and sources JAR use the project LICENSE.
