@@ -49,3 +49,6 @@ supplied by the release tag. To build artifacts with a specific version, pass
 The source archive name omits the RC number so promotion preserves the voted
 bytes. The archive, checksum and signature actually approved by the community
 must be promoted unchanged; a successful local build is not release approval.
+
+Javadoc additionally requires JDK 25; see the documentation build and
+license verification instructions in [RELEASING.md](RELEASING.md).
