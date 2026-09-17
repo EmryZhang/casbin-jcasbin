@@ -19,17 +19,27 @@ under the License.
 
 # Releasing JCasbin
 
-Prepare version, dependency, licensing and workflow changes together in one
+Prepare dependency, licensing and workflow changes together in one
 release-preparation PR. Complete the scoped checks before requesting merge.
 Use [BUILDING.md](BUILDING.md) for the full Java 8/Maven build. Release-script
 tests run with `python3 -m unittest discover -s .github/scripts -p 'test_*.py'`.
 The release workflows require Python 3 and GnuPG, provided by Ubuntu runners.
 
+## Versioning
+
+The version is **not** committed to the source tree. `pom.xml` declares
+`<version>${revision}</version>` with the placeholder `0.0.0`, and the release
+version comes from the git tag: `vX.Y.Z-rcN` and `vX.Y.Z` both map to Maven
+version `X.Y.Z`. The Maven publish job passes `-Drevision=X.Y.Z`, and
+`flatten-maven-plugin` writes the resolved version into the POM that is
+deployed to Maven Central. Nothing in the repository needs to change between
+releases except the tag.
+
 ## Before creating an RC tag
 
-1. Check the latest releases/tags and commit the selected `X.Y.Z` in the POM.
+1. Check the latest releases/tags and choose the next `X.Y.Z`.
    Resolve relevant dependency updates and legal/source-archive findings in the
-   same PR. The approved release scope determines which changes are included.
+   preparation PR. The approved release scope determines which changes are included.
 2. After merge, record the exact merged SHA and verify its build. Check the
    final source archive with Apache RAT and review LICENSE, NOTICE, DISCLAIMER,
    third-party material and any exclusions. New merged bytes need new evidence.

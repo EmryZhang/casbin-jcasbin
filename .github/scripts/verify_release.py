@@ -26,7 +26,6 @@ import subprocess
 import tarfile
 import tempfile
 import urllib.request
-import xml.etree.ElementTree as ET
 import zipfile
 
 ASF = 'https://downloads.apache.org/incubator/casbin/'
@@ -77,9 +76,6 @@ def verify_signature(home, signature, archive):
 def verify(version, output):
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
         raise ValueError('Expected final version X.Y.Z')
-    pom_version = ET.parse('pom.xml').findtext('{http://maven.apache.org/POM/4.0.0}version')
-    if pom_version != version:
-        raise ValueError('POM does not match requested version')
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     name = 'apache-casbin-jcasbin-' + version + '-incubating-src'
     expected = source_files(subprocess.check_output(['git', 'archive', '--format=tar', '--prefix=' + name + '/', commit]), 'tar')

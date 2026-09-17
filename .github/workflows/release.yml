@@ -75,14 +75,6 @@ jobs:
           BASE_VERSION="${VERSION%%-rc*}"
           # Keep the voted source bytes stable when the same commit is promoted.
           BASENAME="apache-casbin-jcasbin-${BASE_VERSION}-incubating-src"
-          export BASE_VERSION
-          python3 - <<'PY'
-          import os
-          import xml.etree.ElementTree as ET
-          version = ET.parse('pom.xml').getroot().findtext('{http://maven.apache.org/POM/4.0.0}version')
-          if version != os.environ['BASE_VERSION']:
-              raise SystemExit(f"Commit the release version to pom.xml first: expected {os.environ['BASE_VERSION']}, got {version}")
-          PY
           PREVIOUS_TAG="$(
             {
               git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$'

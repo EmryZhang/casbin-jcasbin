@@ -23,7 +23,8 @@ under the License.
 
     <groupId>org.casbin</groupId>
     <artifactId>jcasbin</artifactId>
-    <version>1.100.0</version>
+    <!-- The real version is supplied at release time with -Drevision=X.Y.Z (see RELEASING.md). -->
+    <version>${revision}</version>
 
     <name>JCasbin Authorization Library</name>
     <description>An authorization library that supports access control models like ACL, RBAC, ABAC in Java</description>
@@ -61,6 +62,7 @@ under the License.
     </developers>
 
     <properties>
+        <revision>0.0.0</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>2.0.16</slf4j.version>
     </properties>
@@ -81,6 +83,28 @@ under the License.
             </resource>
         </resources>
         <plugins>
+            <plugin>
+                <!-- Resolve ${revision} in the POM that gets installed/deployed. -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.7.0</version>
+                <configuration>
+                    <flattenMode>ossrh</flattenMode>
+                    <updatePomFile>true</updatePomFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals><goal>flatten</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>flatten-clean</id>
+                        <phase>clean</phase>
+                        <goals><goal>clean</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>

@@ -117,7 +117,7 @@ class ReleaseVerificationTest(unittest.TestCase):
         self.assertEqual(Path('dist/sentinel').read_text(), 'keep')
 
     def test_rejects_invalid_version_before_network(self):
-        for version in ('1.0.0-rc1', '../1.0.0', '1.0.1'):
+        for version in ('1.0.0-rc1', '../1.0.0', 'v1.0.0'):
             with self.subTest(version=version), patch.object(release, 'download') as network:
                 with self.assertRaises(ValueError):
                     release.verify(version, Path('dist'))

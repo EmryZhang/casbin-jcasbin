@@ -47,7 +47,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify the committed release version
+      - name: Verify the requested release version
         env:
           MAVEN_VERSION: ${{ inputs.maven_version }}
         run: |
@@ -55,15 +55,11 @@ jobs:
           python3 - <<'PY'
           import os
           import re
-          import xml.etree.ElementTree as ET
           requested = os.environ['MAVEN_VERSION']
           if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', requested):
               raise SystemExit('Expected a final Maven release version X.Y.Z')
           if os.environ['GITHUB_REF'] != f'refs/tags/v{requested}':
               raise SystemExit('Publish only from the matching final release tag after the vote')
-          version = ET.parse('pom.xml').getroot().findtext('{http://maven.apache.org/POM/4.0.0}version')
-          if version != requested:
-              raise SystemExit(f'POM version mismatch: expected {requested}, got {version}')
           PY
 
       - name: Verify promoted ASF release before loading signing credentials
@@ -84,8 +80,9 @@ jobs:
 
       - name: Publish Maven
         run: |
-          mvn -B deploy -DskipTests
+          mvn -B -ntp deploy -DskipTests "-Drevision=${MAVEN_VERSION}"
         env:
+          MAVEN_VERSION: ${{ inputs.maven_version }}
           GPG_KEY_NAME: ${{ secrets.GPG_KEY_NAME }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_JIRA_USERNAME: ${{ secrets.OSSRH_JIRA_USERNAME }}

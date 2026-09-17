@@ -42,3 +42,5 @@ target
 
 .idea/
 *.iml
+# flatten-maven-plugin output
+.flattened-pom.xml

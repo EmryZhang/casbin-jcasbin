@@ -42,7 +42,9 @@ Do not use `deploy` when reviewing a release candidate.
 Some persistence tests rewrite example policy files. Run tests on a disposable
 extraction and preserve the original downloaded archive and its signature.
 
-Release preparation commits the intended Maven version to `pom.xml`. An RC tag
+The source tree carries the placeholder version `0.0.0`; the real version is
+supplied by the release tag. To build artifacts with a specific version, pass
+`-Drevision=X.Y.Z` (see [RELEASING.md](RELEASING.md)). An RC tag
 `vX.Y.Z-rcN` and the corresponding final tag must refer to the reviewed commit.
 The source archive name omits the RC number so promotion preserves the voted
 bytes. The archive, checksum and signature actually approved by the community
