@@ -1,183 +1,194 @@
-// Copyright 2021 The casbin Authors. All Rights Reserved.
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements. See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership. The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License. You may obtain a copy of the License at
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+//     https://www.apache.org/licenses/LICENSE-2.0
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
 
 package org.casbin.jcasbin.util;
+
 import java.util.regex.PatternSyntaxException;
 
 /**
+ * Glob translates a path-style glob expression into a Java regular expression.
  *
- *
- * @author shy
- * @since 2021/1/13
+ * <p>Supported syntax:
+ * <ul>
+ *   <li>{@code *} matches any run of characters except {@code /}</li>
+ *   <li>{@code **} matches any run of characters including {@code /}</li>
+ *   <li>{@code ?} matches exactly one character except {@code /}</li>
+ *   <li>{@code [abc]}, {@code [a-z]} match one character from the set; {@code [!abc]} negates the set.
+ *       A leading {@code ^} or {@code -} is literal. The set never matches {@code /}.</li>
+ *   <li>{@code {a,b}} matches either alternative; groups cannot be nested</li>
+ *   <li>{@code \x} matches the character {@code x} literally</li>
+ * </ul>
+ * The separator is always {@code /}, regardless of the operating system.
  */
 public class Glob {
 
-    private static final String REGEX_META_CHARS = ".^$+{[]|()";
-    private static final String GLOB_META_CHARS = "\\*?[{";
+    private Glob() {
+    }
 
     /**
      * Creates a regex pattern from the given glob expression.
      *
      * @param globPattern the given glob expression
-     * @return the regex pattern
+     * @return the regex pattern, anchored to match the whole input
+     * @throws PatternSyntaxException if the glob expression is malformed
      */
     public static String toRegexPattern(String globPattern) {
-        boolean inGroup = false;
-        StringBuilder regex = new StringBuilder("^");
-
+        StringBuilder regex = new StringBuilder(globPattern.length() * 2 + 2).append('^');
+        int groupStart = -1;
         int i = 0;
         while (i < globPattern.length()) {
-            char c = globPattern.charAt(i++);
+            char c = globPattern.charAt(i);
             switch (c) {
                 case '\\':
-                    // escape special characters
-                    if (i == globPattern.length()) {
-                        throw new PatternSyntaxException("No character to escape",
-                            globPattern, i - 1);
+                    if (i + 1 >= globPattern.length()) {
+                        throw error("Trailing escape character", globPattern, i);
                     }
-                    char next = globPattern.charAt(i++);
-                    if (isGlobMeta(next) || isRegexMeta(next)) {
-                        regex.append('\\');
-                    }
-                    regex.append(next);
-                    break;
-                case '/':
-                    regex.append(c);
-                    break;
-                case '[':
-                    // don't match name separator in class
-                    regex.append("[[^/]&&[");
-                    if (next(globPattern, i) == '^') {
-                        // escape the regex negation char if it appears
-                        regex.append("\\^");
-                        i++;
-                    } else {
-                        // negation
-                        if (next(globPattern, i) == '!') {
-                            regex.append('^');
-                            i++;
-                        }
-                        // hyphen allowed at start
-                        if (next(globPattern, i) == '-') {
-                            regex.append('-');
-                            i++;
-                        }
-                    }
-                    boolean hasRangeStart = false;
-                    char last = 0;
-                    while (i < globPattern.length()) {
-                        c = globPattern.charAt(i++);
-                        if (c == ']') {
-                            break;
-                        }
-                        if (c == '/') {
-                            throw new PatternSyntaxException("Explicit 'name separator' in class",
-                                globPattern, i - 1);
-                        }
-                        // TBD: how to specify ']' in a class?
-                        if (c == '\\' || c == '[' || c == '&' && next(globPattern, i) == '&') {
-                            // escape '\', '[' or "&&" for regex class
-                            regex.append('\\');
-                        }
-                        regex.append(c);
-
-                        if (c == '-') {
-                            if (!hasRangeStart) {
-                                throw new PatternSyntaxException("Invalid range",
-                                    globPattern, i - 1);
-                            }
-                            if ((c = next(globPattern, i++)) == 0 || c == ']') {
-                                break;
-                            }
-                            if (c < last) {
-                                throw new PatternSyntaxException("Invalid range",
-                                    globPattern, i - 3);
-                            }
-                            regex.append(c);
-                            hasRangeStart = false;
-                        } else {
-                            hasRangeStart = true;
-                            last = c;
-                        }
-                    }
-                    if (c != ']') {
-                        throw new PatternSyntaxException("Missing ']", globPattern, i - 1);
-                    }
-                    regex.append("]]");
-                    break;
-                case '{':
-                    if (inGroup) {
-                        throw new PatternSyntaxException("Cannot nest groups",
-                            globPattern, i - 1);
-                    }
-                    regex.append("(?:(?:");
-                    inGroup = true;
-                    break;
-                case '}':
-                    if (inGroup) {
-                        regex.append("))");
-                        inGroup = false;
-                    } else {
-                        regex.append('}');
-                    }
-                    break;
-                case ',':
-                    if (inGroup) {
-                        regex.append(")|(?:");
-                    } else {
-                        regex.append(',');
-                    }
+                    appendLiteral(regex, globPattern.charAt(i + 1));
+                    i += 2;
                     break;
                 case '*':
-                    if (next(globPattern, i) == '*') {
-                        // crosses directory boundaries
+                    if (i + 1 < globPattern.length() && globPattern.charAt(i + 1) == '*') {
                         regex.append(".*");
-                        i++;
+                        i += 2;
                     } else {
-                        // within directory boundary
                         regex.append("[^/]*");
+                        i++;
                     }
                     break;
                 case '?':
                     regex.append("[^/]");
+                    i++;
                     break;
-
-                default:
-                    if (isRegexMeta(c)) {
-                        regex.append('\\');
+                case '[':
+                    i = appendCharacterSet(regex, globPattern, i);
+                    break;
+                case '{':
+                    if (groupStart >= 0) {
+                        throw error("Nested groups are not supported", globPattern, i);
                     }
-                    regex.append(c);
+                    groupStart = i;
+                    regex.append("(?:");
+                    i++;
+                    break;
+                case ',':
+                    if (groupStart >= 0) {
+                        regex.append('|');
+                    } else {
+                        appendLiteral(regex, c);
+                    }
+                    i++;
+                    break;
+                case '}':
+                    if (groupStart >= 0) {
+                        groupStart = -1;
+                        regex.append(')');
+                    } else {
+                        appendLiteral(regex, c);
+                    }
+                    i++;
+                    break;
+                default:
+                    appendLiteral(regex, c);
+                    i++;
             }
         }
-
-        if (inGroup) {
-            throw new PatternSyntaxException("Missing '}", globPattern, i - 1);
+        if (groupStart >= 0) {
+            throw error("Unclosed group", globPattern, groupStart);
         }
-
         return regex.append('$').toString();
     }
 
-    private static boolean isRegexMeta(char c) {
-        return REGEX_META_CHARS.indexOf(c) != -1;
+    /**
+     * Translates the character set starting at {@code start} (which must be {@code [}).
+     *
+     * @return the index just past the closing {@code ]}
+     */
+    private static int appendCharacterSet(StringBuilder regex, String glob, int start) {
+        int i = start + 1;
+        boolean negated = i < glob.length() && glob.charAt(i) == '!';
+        if (negated) {
+            i++;
+        }
+        // Exclude the separator up front; a negated set is simply [^/...].
+        regex.append(negated ? "[^/" : "(?!/)[");
+        int members = 0;
+
+        // A leading '^' (when not negated) or '-' is an ordinary member.
+        if (i < glob.length() && (glob.charAt(i) == '-' || (!negated && glob.charAt(i) == '^'))) {
+            appendLiteral(regex, glob.charAt(i));
+            members++;
+            i++;
+        }
+
+        while (true) {
+            if (i >= glob.length()) {
+                throw error("Unclosed character set", glob, start);
+            }
+            char c = glob.charAt(i);
+            if (c == ']') {
+                break;
+            }
+            if (c == '/') {
+                throw error("Separator is not allowed in a character set", glob, i);
+            }
+            if (c == '-') {
+                throw error("Range has no start", glob, i);
+            }
+            appendLiteral(regex, c);
+            members++;
+            i++;
+            if (i < glob.length() && glob.charAt(i) == '-') {
+                i++;
+                if (i >= glob.length()) {
+                    throw error("Unclosed character set", glob, start);
+                }
+                char upper = glob.charAt(i);
+                if (upper == ']') {
+                    // "[ab-]": a dash right before the closing bracket is literal.
+                    appendLiteral(regex, '-');
+                    break;
+                }
+                if (upper < c) {
+                    throw error("Range end is lower than range start", glob, i);
+                }
+                regex.append('-');
+                appendLiteral(regex, upper);
+                i++;
+            }
+        }
+        if (members == 0) {
+            throw error("Empty character set", glob, start);
+        }
+        regex.append(']');
+        return i + 1;
     }
 
-    private static boolean isGlobMeta(char c) {
-        return GLOB_META_CHARS.indexOf(c) != -1;
+    /**
+     * Appends {@code c} so that it matches itself, both inside and outside a character class.
+     * Escaping every non-alphanumeric character is always safe in java.util.regex.
+     */
+    private static void appendLiteral(StringBuilder regex, char c) {
+        if (!Character.isLetterOrDigit(c) && c < 128) {
+            regex.append('\\');
+        }
+        regex.append(c);
     }
 
-    private static char next(String glob, int i) {
-        return i < glob.length() ? glob.charAt(i) : 0;
+    private static PatternSyntaxException error(String description, String glob, int index) {
+        return new PatternSyntaxException(description, glob, index);
     }
 }
