@@ -67,13 +67,11 @@ jobs:
           MAVEN_VERSION: ${{ inputs.maven_version }}
         run: python3 .github/scripts/verify_release.py "${MAVEN_VERSION}" --output verified-release
 
-      - name: Set up Java 8 and Javadoc 25
+      - name: Set up JDK 1.8
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: |
-            25
-            8
+          java-version: 8
           server-id: ossrh
           server-username: OSSRH_JIRA_USERNAME
           server-password: OSSRH_JIRA_PASSWORD
@@ -82,8 +80,6 @@ jobs:
 
       - name: Publish Maven
         run: |
-          mvn -B -ntp clean package -DskipTests -Dgpg.skip=true "-Drevision=${MAVEN_VERSION}"
-          python3 .github/scripts/verify_javadoc.py target/jcasbin-*-javadoc.jar
           mvn -B -ntp deploy -DskipTests "-Drevision=${MAVEN_VERSION}"
         env:
           MAVEN_VERSION: ${{ inputs.maven_version }}

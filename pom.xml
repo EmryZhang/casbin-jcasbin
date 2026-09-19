@@ -26,8 +26,8 @@ under the License.
     <!-- The real version is supplied at release time with -Drevision=X.Y.Z (see RELEASING.md). -->
     <version>${revision}</version>
 
-    <name>Apache Casbin JCasbin (Incubating)</name>
-    <description>An authorization library that supports access control models like ACL, RBAC, ABAC in Java Apache Casbin (Incubating) is an effort undergoing incubation at the Apache Software Foundation (ASF), sponsored by the Apache Incubator PMC. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.</description>
+    <name>Apache jCasbin (Incubating)</name>
+    <description>An authorization library that supports access control models like ACL, RBAC, ABAC in Java</description>
     <url>https://casbin.apache.org/</url>
     <inceptionYear>2017</inceptionYear>
 
@@ -54,10 +54,6 @@ under the License.
         <developerConnection>scm:git:ssh://git@github.com/apache/casbin-jcasbin.git</developerConnection>
     </scm>
     <developers>
-        <developer>
-            <name>Apache Casbin (Incubating)</name>
-            <url>https://casbin.apache.org/</url>
-        </developer>
         <developer>
             <name>Yang Luo</name>
             <email>hsluoyz@qq.com</email>
@@ -87,12 +83,6 @@ under the License.
             </resource>
         </resources>
         <plugins>
-            <plugin>
-                <!-- Override the obsolete enforcer inherited from oss-parent 7. -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.6.3</version>
-            </plugin>
             <plugin>
                 <!-- Resolve ${revision} in the POM that gets installed/deployed. -->
                 <groupId>org.codehaus.mojo</groupId>
@@ -125,26 +115,15 @@ under the License.
                         <phase>prepare-package</phase>
                         <goals><goal>copy-resources</goal></goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/reports/apidocs</outputDirectory>
+                            <outputDirectory>${project.build.directory}/reports/apidocs/META-INF</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${project.basedir}</directory>
-                                    <targetPath>META-INF</targetPath>
                                     <includes>
                                         <include>LICENSE</include>
                                         <include>NOTICE</include>
                                         <include>DISCLAIMER</include>
                                     </includes>
-                                </resource>
-                                <resource>
-                                    <directory>${project.basedir}/src/javadoc-legal</directory>
-                                    <targetPath>META-INF</targetPath>
-                                    <includes><include>LICENSE</include></includes>
-                                </resource>
-                                <resource>
-                                    <directory>${project.basedir}/src/javadoc-legal</directory>
-                                    <targetPath>legal</targetPath>
-                                    <includes><include>LICENSE</include></includes>
                                 </resource>
                             </resources>
                         </configuration>
@@ -176,43 +155,17 @@ under the License.
                 <!-- Allow attaching Javadoc during releases -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.12.0</version>
-                <!-- Patch the doc-generation tool's dependencies, not library runtime dependencies. -->
-                <dependencies>
-                    <dependency>
-                        <groupId>commons-beanutils</groupId>
-                        <artifactId>commons-beanutils</artifactId>
-                        <version>1.11.0</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.plexus</groupId>
-                        <artifactId>plexus-utils</artifactId>
-                        <version>4.0.3</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>io.airlift</groupId>
-                        <artifactId>aircompressor</artifactId>
-                        <version>2.0.3</version>
-                    </dependency>
-                </dependencies>
+                <version>3.11.1</version>
                 <configuration>
-                    <outputDirectory>${project.build.directory}/reports</outputDirectory>
-                    <locale>en</locale>
-                    <docencoding>UTF-8</docencoding>
-                    <charset>UTF-8</charset>
                     <source>8</source>
-                    <!-- Generate documentation with explicit resource licenses. -->
-                    <jdkToolchain><version>25</version></jdkToolchain>
-                    <doctitle>${project.name} ${project.version} API</doctitle>
-                    <windowtitle>${project.name} ${project.version} API</windowtitle>
-                    <bottom>${project.description}</bottom>
+                    <bottom>Apache Casbin (Incubating) is an effort undergoing incubation at the Apache Software Foundation (ASF), sponsored by the Apache Incubator PMC. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.</bottom>
                     <detectJavaApiLink>false</detectJavaApiLink>
+                    <!-- Turn off Java 8 strict Javadoc checking -->
+<!--                    <additionalparam>-Xdoclint:none</additionalparam>-->
                     <doclint>none</doclint>
-                    <additionalOptions>
-                        <!-- Complete reviewed texts are copied by javadoc-legal-files. -->
-                        <additionalOption>--legal-notices none</additionalOption>
-                        <additionalOption>--no-fonts</additionalOption>
-                    </additionalOptions>
+                    <sourceFileIncludes>
+                        <sourceFileInclude>**/*.java</sourceFileInclude>
+                    </sourceFileIncludes>
                     <tags>
                         <tag>
                             <name>notnull</name>

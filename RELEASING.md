@@ -98,25 +98,3 @@ These operations require no additional source PR after the preparation merges.
 
 References: [ASF release policy](https://www.apache.org/legal/release-policy.html)
 and [Central Maven publishing](https://central.sonatype.org/publish/publish-portal-maven/).
-
-## Documentation build and distribution metadata
-
-Compile and test with Java 8 and Maven 3.9.x. Generate Javadoc with JDK 25:
-register version `25` in Maven toolchains, or pass
-`-DjavadocExecutable=/path/to/jdk-25/bin/javadoc`. CI installs both JDKs;
-Java 8 runs Maven. This changes the documentation tool, not the library's
-Java 8 runtime requirement.
-
-The Javadoc JAR includes the complete Apache-2.0, UPL-1.0 and jQuery/jQuery UI
-MIT texts from `src/javadoc-legal/LICENSE`. Generated resources retain their
-license headers; fonts and syntax highlighting are not included. The main
-and sources JARs retain the root LICENSE. After building, run
-`python3 .github/scripts/verify_javadoc.py target/jcasbin-*-javadoc.jar`.
-Review the actual resource versions and license texts together when updating
-the documentation JDK. The verifier also checks visible incubation statements.
-
-This release retains `org.casbin:jcasbin` so existing consumers can upgrade
-without changing dependency coordinates. The Incubator Maven `org.apache`
-namespace guidance is a SHOULD; this compatibility rationale does not claim
-an IPMC exception or release approval. Project identity and incubation status
-are explicit in the POM, documentation and release notes.

@@ -35,19 +35,14 @@ jobs:
         with:
           fetch-depth: '0'
 
-      - name: Set up Java 8 and Javadoc 25
+      - name: Set up JDK 8
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: |
-            25
-            8
+          java-version: 8
 
       - name: Build with Maven
         run: mvn -B -ntp clean verify cobertura:cobertura -Dgpg.skip=true
-
-      - name: Verify documentation licenses and display
-        run: python3 .github/scripts/verify_javadoc.py target/jcasbin-*-javadoc.jar
 
       - name: Test release verification
         run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
