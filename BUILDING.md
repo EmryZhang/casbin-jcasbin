@@ -42,6 +42,35 @@ Do not use `deploy` when reviewing a release candidate.
 Some persistence tests rewrite example policy files. Run tests on a disposable
 extraction and preserve the original downloaded archive and its signature.
 
+## Reproducing candidate Maven documentation
+
+Ordinary development still needs only Java 8. To reproduce the release Maven
+artifacts, also unpack Temurin OpenJDK 25.0.4.1+1 for its Javadoc tool and use
+Python 3. Keep `JAVA_HOME` on Java 8 and run the checked build entry point:
+
+```sh
+python3 .github/scripts/build_release_maven.py 1.100.0 --javadoc-home /path/to/temurin-25.0.4.1+1
+```
+
+PowerShell example:
+
+```powershell
+python .github/scripts/build_release_maven.py 1.100.0 --javadoc-home 'C:\tools\jdk-25.0.4.1+1'
+```
+
+This entry point runs clean verify with the `release-javadoc` profile and
+signing disabled. It checks the main/sources/Javadoc JARs and flattened POM,
+then writes `target/release-maven-check.json`. It never installs, deploys,
+tags or publishes. The separate Javadoc executable changes the documentation,
+not the library's Java 8 runtime baseline. Its actual resource notices and
+complete license texts are included in the Javadoc JAR; see its META-INF/LICENSE.
+Do not use an ordinary Java 8 Javadoc JAR as the replacement candidate.
+
+The entry point accepts `--maven`, `--repository` and `--offline` for a local
+tool/cache. `--skip-tests` is only a packaging/CI-docs check and must not be
+reported as a full test run. The generated report does not replace human
+artifact review, signatures or the release vote.
+
 The source tree carries the placeholder version `0.0.0`; the real version is
 supplied by the release tag. To build artifacts with a specific version, pass
 `-Drevision=X.Y.Z` (see [RELEASING.md](RELEASING.md)). An RC tag

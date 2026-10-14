@@ -74,6 +74,17 @@ under the License.
         </developer>
     </developers>
 
+    <distributionManagement>
+        <repository>
+            <id>apache.releases.https</id>
+            <url>https://repository.apache.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+        <snapshotRepository>
+            <id>apache.snapshots.https</id>
+            <url>https://repository.apache.org/content/repositories/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
         <revision>0.0.0</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -217,17 +228,10 @@ under the License.
                 </executions>
             </plugin>
             <plugin>
-                <!-- Automatically close and deploy from OSSRH -->
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.6.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>ossrh</publishingServerId>
-                    <tokenAuth>true</tokenAuth>
-                    <!-- Release versions will be synced to Maven Central automatically. -->
-                    <autoPublish>true</autoPublish>
-                </configuration>
+                <!-- Upload to review staging; close/promote are separate RM actions. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.2.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -319,4 +323,36 @@ under the License.
             <version>2.18.9</version>
         </dependency>
     </dependencies>
+    <profiles>
+        <!-- Candidate docs use the pinned OpenJDK tool; compilation/tests stay on Java8. -->
+        <profile>
+            <id>release-javadoc</id>
+            <build><plugins><plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <javadocExecutable>${javadoc.tool.path}</javadocExecutable>
+                    <additionalOptions>
+                        <additionalOption>--legal-notices</additionalOption>
+                        <additionalOption>${project.basedir}/src/main/javadoc/legal</additionalOption>
+                    </additionalOptions>
+                </configuration>
+            </plugin><plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions><execution>
+                    <id>javadoc-thirdparty-license</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.directory}/reports/apidocs/META-INF</outputDirectory>
+                        <resources><resource>
+                            <directory>${project.basedir}/src/main/javadoc</directory>
+                            <includes><include>LICENSE</include></includes>
+                        </resource></resources>
+                    </configuration>
+                </execution></executions>
+            </plugin></plugins></build>
+        </profile>
+    </profiles>
 </project>
