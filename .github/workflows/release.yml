@@ -186,31 +186,6 @@ jobs:
             cat DISCLAIMER
           } > RELEASE_NOTES.md
 
-      - name: Set up pinned Javadoc tool for RC verification
-        if: needs.prepare.outputs.prerelease == 'true'
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          # Adoptium's SemVer name for OpenJDK 25.0.4.1+1-LTS.
-          java-version: '25.0.4+101.0.LTS'
-
-      - name: Remember Javadoc tool
-        if: needs.prepare.outputs.prerelease == 'true'
-        run: echo "JCASBIN_JAVADOC_HOME=${JAVA_HOME}" >> "${GITHUB_ENV}"
-
-      - name: Set up compilation JDK for RC verification
-        if: needs.prepare.outputs.prerelease == 'true'
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '8'
-
-      - name: Verify unsigned Maven candidates before packaging RC source
-        if: needs.prepare.outputs.prerelease == 'true'
-        env:
-          VERSION: ${{ needs.prepare.outputs.maven_version }}
-        run: python3 .github/scripts/build_release_maven.py "${VERSION}" --javadoc-home "${JCASBIN_JAVADOC_HOME}"
-
       - name: Create source packages
         if: needs.prepare.outputs.prerelease == 'true'
         env:

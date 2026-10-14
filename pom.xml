@@ -45,9 +45,10 @@ under the License.
     </issueManagement>
 
     <parent>
-        <groupId>org.sonatype.oss</groupId>
-        <artifactId>oss-parent</artifactId>
-        <version>7</version>
+        <groupId>org.apache</groupId>
+        <artifactId>apache</artifactId>
+        <version>40</version>
+        <relativePath/>
     </parent>
     <licenses>
         <license>
@@ -74,19 +75,9 @@ under the License.
         </developer>
     </developers>
 
-    <distributionManagement>
-        <repository>
-            <id>apache.releases.https</id>
-            <url>https://repository.apache.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-        <snapshotRepository>
-            <id>apache.snapshots.https</id>
-            <url>https://repository.apache.org/content/repositories/snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <properties>
         <revision>0.0.0</revision>
+        <javaVersion>8</javaVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>2.0.16</slf4j.version>
     </properties>
@@ -107,6 +98,12 @@ under the License.
             </resource>
         </resources>
         <plugins>
+            <plugin>
+                <!-- Keep the project's reviewed LICENSE/NOTICE instead of generated templates. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-remote-resources-plugin</artifactId>
+                <configuration><skip>true</skip></configuration>
+            </plugin>
             <plugin>
                 <!-- Resolve ${revision} in the POM that gets installed/deployed. -->
                 <groupId>org.codehaus.mojo</groupId>
@@ -153,27 +150,6 @@ under the License.
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>3.2.7</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <!-- Prevent gpg from using pinentry programs -->
-                    <gpgArguments>
-                        <arg>--pinentry-mode</arg>
-                        <arg>loopback</arg>
-                    </gpgArguments>
-                </configuration>
             </plugin>
             <plugin>
                 <!-- Allow attaching Javadoc during releases -->
@@ -226,12 +202,6 @@ under the License.
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <!-- Upload to review staging; close/promote are separate RM actions. -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.2.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -324,35 +294,29 @@ under the License.
         </dependency>
     </dependencies>
     <profiles>
-        <!-- Candidate docs use the pinned OpenJDK tool; compilation/tests stay on Java8. -->
         <profile>
-            <id>release-javadoc</id>
-            <build><plugins><plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <configuration>
-                    <javadocExecutable>${javadoc.tool.path}</javadocExecutable>
-                    <additionalOptions>
-                        <additionalOption>--legal-notices</additionalOption>
-                        <additionalOption>${project.basedir}/src/main/javadoc/legal</additionalOption>
-                    </additionalOptions>
-                </configuration>
-            </plugin><plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions><execution>
-                    <id>javadoc-thirdparty-license</id>
-                    <phase>prepare-package</phase>
-                    <goals><goal>copy-resources</goal></goals>
-                    <configuration>
-                        <outputDirectory>${project.build.directory}/reports/apidocs/META-INF</outputDirectory>
-                        <resources><resource>
-                            <directory>${project.basedir}/src/main/javadoc</directory>
-                            <includes><include>LICENSE</include></includes>
-                        </resource></resources>
-                    </configuration>
-                </execution></executions>
-            </plugin></plugins></build>
+            <id>apache-release</id>
+            <build>
+                <plugins>
+                    <!-- Source archives and SHA-512 files come from the reviewed RC tag. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <executions><execution>
+                            <id>source-release-assembly</id>
+                            <phase>none</phase>
+                        </execution></executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>eu.maveniverse.maven.plugins</groupId>
+                        <artifactId>checksum-plugin3</artifactId>
+                        <executions><execution>
+                            <id>source-release-checksum</id>
+                            <phase>none</phase>
+                        </execution></executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

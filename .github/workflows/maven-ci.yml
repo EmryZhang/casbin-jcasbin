@@ -26,9 +26,6 @@ on:
       - master
   pull_request:
 
-permissions:
-  contents: read
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -44,6 +41,9 @@ jobs:
           distribution: temurin
           java-version: 8
 
+      - name: Check unsigned Apache release profile
+        run: mvn -B -ntp clean verify -Papache-release -Dgpg.skip=true -DskipTests=true
+
       - name: Build with Maven
         run: mvn -B -ntp clean verify cobertura:cobertura -Dgpg.skip=true
 
@@ -54,25 +54,3 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  candidate-docs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up pinned Javadoc tool
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          # Adoptium's SemVer name for OpenJDK 25.0.4.1+1-LTS.
-          java-version: '25.0.4+101.0.LTS'
-      - name: Remember Javadoc tool
-        run: echo "JCASBIN_JAVADOC_HOME=${JAVA_HOME}" >> "${GITHUB_ENV}"
-      - name: Set up compilation JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '8'
-      - name: Check candidate Maven contents
-        # The build job runs the full suite; this job covers the distinct docs profile.
-        run: python3 .github/scripts/build_release_maven.py 0.0.0 --javadoc-home "${JCASBIN_JAVADOC_HOME}" --skip-tests

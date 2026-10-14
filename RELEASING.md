@@ -19,89 +19,61 @@ under the License.
 
 # Releasing JCasbin
 
-Prepare all scoped changes in one preparation PR. Verify the actual merged
-candidate, source/legal files and extracted build before creating an RC.
-Keep Java 8 compatibility and use BUILDING.md for the build. Run release-helper
-tests with `python3 -m unittest discover -s .github/scripts -p 'test_*.py'`.
+Use Java 8 and Maven 3.9.x. Prepare the release changes in one PR, then
+verify its actual merged commit and CI. Java imports stay `org.casbin.jcasbin`;
+Maven coordinates are `org.apache.casbin:jcasbin:X.Y.Z`.
 
-## Identity and permissions
+## Release checklist
 
-`org.apache.casbin:jcasbin` starts with 1.100.0; Java imports are unchanged.
-Both `vX.Y.Z-rcN` and `vX.Y.Z` use `-Drevision=X.Y.Z`; the flattened POM must
-contain that resolved version. Verify its disclaimer, Apache developer, license
-and SCM together with embedded JAR metadata.
+1. Confirm the release manager's signing key is in the project KEYS file and
+   the ASF Nexus profile covers `org.apache.casbin`. Keep private Maven settings
+   outside Git, using server ID `apache.releases.https`. The Apache parent POM
+   provides the staging and snapshot URLs; do not override them. Signing,
+   Nexus access and ASF dist access are separate permissions.
+2. Create an unused `vX.Y.Z-rcN` tag at the reviewed merged commit. Download the
+   workflow's tar.gz and ZIP source packages and SHA-512 files. Check them against
+   the tag and build a disposable extraction as described in BUILDING.md.
+   Keep the original archives: some tests rewrite example policies.
+3. Review the source and generated main/sources/Javadoc JARs, flattened POM,
+   legal files and documentation resources. Resolve any identified release
+   blockers. Javadoc licensing is being reviewed separately; this Maven route
+   change does not clear that question or require a newer documentation JDK.
+4. From a fresh extraction of the same source, build, sign and upload Maven
+   artifacts to ASF review staging with the standard release profile:
 
-Confirm the actual ASF Nexus staging profile covers `org.apache.casbin`, its
-project LDAP mapping and the release manager's deployment permission. ASF login
-and old `org.casbin`/Central Portal permissions are not proof. If necessary,
-request Infra to check the existing configuration before creating a duplicate.
-Keep private settings outside the repository; server ID is
-`apache.releases.https`. Signing/KEYS, ASF distribution and Nexus permissions
-are separate. Never expose secrets in logs or commit them.
+   ```sh
+   mvn -B -ntp clean deploy -Papache-release -Drevision=X.Y.Z
+   ```
 
-## Source and Maven review staging
+   Use your private settings with `-s /path/to/settings.xml` if needed. Do not
+   skip tests or signing for a real release. The parent profile signs the main,
+   sources and Javadoc JARs and resolved POM. Source-release assembly/checksum
+   executions are disabled because the tagged source archives from step 2 are
+   the vote originals; do not create another source archive from test-modified
+   files. Sign those original tar.gz/ZIP files separately and stage them with
+   their signatures and SHA-512 files under a new ASF dev RC directory.
+5. Inspect the actual Nexus repository ID and artifacts, then close it for
+   review. Independently download all JARs/POM/signatures, verify KEYS,
+   signatures, hashes, GAV, legal material and correspondence with the source.
+   Record named source and binary review. Check remote state before retrying;
+   never overwrite a candidate or drop someone else's repository.
+6. Start fresh project/PPMC and IPMC votes with the exact source tag/commit,
+   ASF dev source URL, closed Maven repository URL, KEYS and verification
+   results. Link the dev ballot/result in the general request, and count the
+   two bodies separately. Cancelled RC votes cannot be reused.
+7. After both approvals, promote the voted source archives to ASF release
+   distribution and release the same closed Nexus repository. Promotion does
+   not rebuild Maven files. Verify public downloads and Maven resolution.
+   Push `vX.Y.Z` at the reviewed RC commit only after source promotion: its
+   workflow verifies and reuses the promoted ASF originals for GitHub Release,
+   with no Maven rebuild or deployment. Complete the download page and announcement.
 
-Create an unused `vX.Y.Z-rcN` at the reviewed merged commit. The tag creates a
-GitHub prerelease with tar.gz and ZIP source archives and SHA-512 sidecars.
-Download/inspect/build the actual archives; sign and stage both formats with
-their `.asc` and `.sha512` under the new ASF dev RC directory. Never overwrite
-an existing candidate or reuse cancelled votes.
+For an unsigned local check of the release profile, use
+`mvn -B -ntp clean verify -Papache-release -Drevision=X.Y.Z -Dgpg.skip=true`.
+This is not a signing or staging test. Ordinary development still uses
+BUILDING.md and does not need the release profile.
 
-Build main, sources and Javadoc JARs plus the flattened POM from that exact
-source with the checked entry point in BUILDING.md, using Java8 for Maven and
-Temurin OpenJDK 25.0.4.1+1 only for Javadoc. Run without --skip-tests for the
-full candidate verification. Check every artifact's legal files, metadata, source correspondence
-and generated documentation resources. Record the actual JDK/doclet provenance
-and applicable licensing; successful Javadoc generation is not legal clearance.
-Named human review must cover these binaries before staging them for the vote.
-
-The POM deploys to the ASF review staging endpoint using the ordinary Maven
-Deploy Plugin. Sign the reviewed files separately and preserve their hashes.
-With private settings and permissions, use the pinned `deploy:deploy-file`
-goal to upload those existing main/sources/Javadoc JARs, flattened POM and
-their signatures. Do not run the build lifecycle's `mvn deploy`: it can rebuild
-the reviewed files or silently use ordinary Java8 documentation. This upload
-is an authenticated release operation, not a test command. Confirm the
-actual staging repository created for the project, inspect its contents, then
-close it in Nexus for review. Deploy does not close or promote this repository.
-Do not override the staging URL. Do not upload SHA-256/SHA-512 sidecars to
-Nexus; retain SHA-512 separately in the evidence manifest.
-
-The Maven upload consists of the existing main JAR as `file`, the existing
-flattened POM as `pomFile`, and six attached files. For Deploy Plugin 3.2.0,
-the attachments are main JAR signature, sources JAR, sources JAR signature,
-Javadoc JAR, Javadoc JAR signature and POM signature, with matching classifiers
-`,sources,sources,javadoc,javadoc,` and types
-`jar.asc,jar,jar.asc,jar,jar.asc,pom.asc`. Use the absolute reviewed paths and
-the same `apache.releases.https` server ID and ASF staging endpoint in the POM.
-Verify all eight uploaded originals and their signatures after closing; inspect
-the real remote state before any retry. Do not generate a replacement POM.
-
-Inspect the real closed repository ID and URL. Download its JARs/POM/signatures
-independently, verifying hashes, public KEYS, GAV, legal material and source
-correspondence. Closing makes artifacts available for review; it does not
-release them to Central. Inspect partial remote state before any retry.
-
-## Votes and publication
-
-The ballots include exact source/tag/commit and Maven staging links, KEYS,
-hashes and test scope. Sequential general@ requests link the dev ballot and
-result; concurrent requests link the active dev ballot and say endorsement is
-pending. Count PPMC and IPMC votes separately and start fresh ballots for a
-replacement RC. Only publish after both required approvals.
-
-Promote the voted source originals to ASF release distribution, and promote
-the reviewed closed Maven repository separately. Never rebuild the Maven
-artifacts after voting. Wait for public distribution and verify all outputs.
-The final `vX.Y.Z` tag must identify the reviewed RC commit; its workflow reuses
-and verifies the promoted ASF source originals for GitHub Release. It performs
-no Maven rebuild/deploy. The old automatic Central publishing/retry workflow
-is removed so this route cannot publish a second set of artifacts.
-
-Before promotion/retries, verify exact approval scope, repository state and
-existing GAV; do not overwrite a release or drop another person's repository.
-Complete public display, consumer resolution and authorized announcement.
-
-References: [ASF Maven guide](https://infra.apache.org/publishing-maven-artifacts.html),
+References: [Apache parent POM](https://maven.apache.org/pom/asf/),
+[ASF Maven guide](https://infra.apache.org/publishing-maven-artifacts.html),
 [ASF release policy](https://www.apache.org/legal/release-policy.html),
-[Incubation Policy](https://incubator.apache.org/policy/incubation.html#releases).
+[Incubation policy](https://incubator.apache.org/policy/incubation.html#releases).
